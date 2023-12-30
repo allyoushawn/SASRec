@@ -3,16 +3,16 @@ from modules import *
 
 class Model():
     def __init__(self, usernum, itemnum, args, reuse=None):
-        self.is_training = tf.placeholder(tf.bool, shape=())
-        self.u = tf.placeholder(tf.int32, shape=(None))
-        self.input_seq = tf.placeholder(tf.int32, shape=(None, args.maxlen))
-        self.pos = tf.placeholder(tf.int32, shape=(None, args.maxlen))
-        self.neg = tf.placeholder(tf.int32, shape=(None, args.maxlen))
+        self.is_training = tf.compat.v1.placeholder(tf.bool, shape=())
+        self.u = tf.compat.v1.placeholder(tf.int32, shape=(None))
+        self.input_seq = tf.compat.v1.placeholder(tf.int32, shape=(None, args.maxlen))
+        self.pos = tf.compat.v1.placeholder(tf.int32, shape=(None, args.maxlen))
+        self.neg = tf.compat.v1.placeholder(tf.int32, shape=(None, args.maxlen))
         pos = self.pos
         neg = self.neg
-        mask = tf.expand_dims(tf.to_float(tf.not_equal(self.input_seq, 0)), -1)
+        mask = tf.expand_dims(tf.compat.v1.to_float(tf.not_equal(self.input_seq, 0)), -1)
 
-        with tf.variable_scope("SASRec", reuse=reuse):
+        with tf.compat.v1.variable_scope("SASRec", reuse=reuse):
             # sequence embedding, item embedding table
             self.seq, item_emb_table = embedding(self.input_seq,
                                                  vocab_size=itemnum + 1,
@@ -40,7 +40,7 @@ class Model():
             self.seq += t
 
             # Dropout
-            self.seq = tf.layers.dropout(self.seq,
+            self.seq = tf.compat.v1.layers.dropout(self.seq,
                                          rate=args.dropout_rate,
                                          training=tf.convert_to_tensor(self.is_training))
             self.seq *= mask
@@ -48,7 +48,7 @@ class Model():
             # Build blocks
 
             for i in range(args.num_blocks):
-                with tf.variable_scope("num_blocks_%d" % i):
+                with tf.compat.v1.variable_scope("num_blocks_%d" % i):
 
                     # Self-attention
                     self.seq = multihead_attention(queries=normalize(self.seq),
@@ -73,7 +73,7 @@ class Model():
         neg_emb = tf.nn.embedding_lookup(item_emb_table, neg)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * args.maxlen, args.hidden_units])
 
-        self.test_item = tf.placeholder(tf.int32, shape=(101))
+        self.test_item = tf.compat.v1.placeholder(tf.int32, shape=(101))
         test_item_emb = tf.nn.embedding_lookup(item_emb_table, self.test_item)
         self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
         self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], args.maxlen, 101])
@@ -84,12 +84,12 @@ class Model():
         self.neg_logits = tf.reduce_sum(neg_emb * seq_emb, -1)
 
         # ignore padding items (0)
-        istarget = tf.reshape(tf.to_float(tf.not_equal(pos, 0)), [tf.shape(self.input_seq)[0] * args.maxlen])
+        istarget = tf.reshape(tf.compat.v1.to_float(tf.not_equal(pos, 0)), [tf.shape(self.input_seq)[0] * args.maxlen])
         self.loss = tf.reduce_sum(
-            - tf.log(tf.sigmoid(self.pos_logits) + 1e-24) * istarget -
-            tf.log(1 - tf.sigmoid(self.neg_logits) + 1e-24) * istarget
+            - tf.compat.v1.log(tf.sigmoid(self.pos_logits) + 1e-24) * istarget -
+            tf.compat.v1.log(1 - tf.sigmoid(self.neg_logits) + 1e-24) * istarget
         ) / tf.reduce_sum(istarget)
-        reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+        reg_losses = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES)
         self.loss += sum(reg_losses)
 
         tf.summary.scalar('loss', self.loss)
@@ -100,12 +100,12 @@ class Model():
         if reuse is None:
             tf.summary.scalar('auc', self.auc)
             self.global_step = tf.Variable(0, name='global_step', trainable=False)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=args.lr, beta2=0.98)
+            self.optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=args.lr, beta2=0.98)
             self.train_op = self.optimizer.minimize(self.loss, global_step=self.global_step)
         else:
             tf.summary.scalar('test_auc', self.auc)
 
-        self.merged = tf.summary.merge_all()
+        self.merged = tf.compat.v1.summary.merge_all()
 
     def predict(self, sess, u, seq, item_idx):
         return sess.run(self.test_logits,
