@@ -37,7 +37,8 @@ def data_partition(fname):
     return [user_train, user_valid, user_test, usernum, itemnum]
 
 
-def evaluate(model, dataset, args, sess):
+def evaluate(model, dataset, args):
+    sess = model.sess
     [train, valid, test, usernum, itemnum] = copy.deepcopy(dataset)
 
     NDCG = 0.0
@@ -85,7 +86,8 @@ def evaluate(model, dataset, args, sess):
     return NDCG / valid_user, HT / valid_user
 
 
-def evaluate_valid(model, dataset, args, sess):
+def evaluate_valid(model, dataset, args):
+    sess = model.sess
     [train, valid, test, usernum, itemnum] = copy.deepcopy(dataset)
 
     NDCG = 0.0

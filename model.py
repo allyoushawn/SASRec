@@ -2,7 +2,7 @@ from modules import *
 
 
 class Model():
-    def __init__(self, usernum, itemnum, args, reuse=None):
+    def __init__(self, sess, usernum, itemnum, args, reuse=None):
         self.is_training = tf.compat.v1.placeholder(tf.bool, shape=())
         self.u = tf.compat.v1.placeholder(tf.int32, shape=(None))
         self.input_seq = tf.compat.v1.placeholder(tf.int32, shape=(None, args.maxlen))
@@ -106,6 +106,14 @@ class Model():
             tf.summary.scalar('test_auc', self.auc)
 
         self.merged = tf.compat.v1.summary.merge_all()
+        self.sess = sess
+        self.saver = tf.compat.v1.train.Saver(max_to_keep=None)
+
+    def save_vars(self, path, step):
+        self.saver.save(self.sess, path, global_step=step)
+
+    def restore_vars(self, path):
+        self.saver.restore(self.sess, path)
 
     def predict(self, sess, u, seq, item_idx):
         return sess.run(self.test_logits,
