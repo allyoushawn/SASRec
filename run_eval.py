@@ -4,8 +4,7 @@ import argparse
 import tensorflow as tf
 from sampler import WarpSampler
 from model import Model
-from tqdm import tqdm
-from util import *
+from util import evaluate, evaluate_valid, data_partition, get_item_prior
 
 
 def str2bool(s):
@@ -34,6 +33,7 @@ with open(os.path.join(args.dataset + '_' + args.train_dir, 'args.txt'), 'w') as
     f.write('\n'.join([str(k) + ',' + str(v) for k, v in sorted(vars(args).items(), key=lambda x: x[0])]))
 f.close()
 
+item_prior = get_item_prior(args.dataset)
 dataset = data_partition(args.dataset)
 [user_train, user_valid, user_test, usernum, itemnum] = dataset
 num_batch = int(len(user_train) / args.batch_size)
@@ -50,24 +50,24 @@ sess = tf.compat.v1.Session(config=config)
 tf.compat.v1.disable_eager_execution()
 sampler = WarpSampler(user_train, usernum, itemnum, batch_size=args.batch_size, maxlen=args.maxlen, n_workers=3)
 model = Model(sess, usernum, itemnum, args)
-model.restore_vars('./test_save_model/my_model-46')
+model.restore_vars('./test_save_model/my_model-1002')
 
 T = 0.0
 t0 = time.time()
 
 
 try:
-        t1 = time.time() - t0
-        T += t1
-        print ('Evaluating',)
-        t_test = evaluate(model, dataset, args)
-        t_valid = evaluate_valid(model, dataset, args)
-        print ('')
-        print ('time: %f(s), valid (NDCG@10: %.4f, HR@10: %.4f), test (NDCG@10: %.4f, HR@10: %.4f)' % (
-        T, t_valid[0], t_valid[1], t_test[0], t_test[1]))
-        f.write(str(t_valid) + ' ' + str(t_test) + '\n')
-        f.flush()
-        t0 = time.time()
+    t1 = time.time() - t0
+    T += t1
+    print ('Evaluating',)
+    t_test = evaluate(model, dataset, args, item_prior=item_prior)
+    t_valid = evaluate_valid(model, dataset, args, item_prior=item_prior)
+    print ('')
+    print ('time: %f(s), valid (NDCG@10: %.4f, HR@10: %.4f), test (NDCG@10: %.4f, HR@10: %.4f)' % (
+    T, t_valid[0], t_valid[1], t_test[0], t_test[1]))
+    f.write(str(t_valid) + ' ' + str(t_test) + '\n')
+    f.flush()
+    t0 = time.time()
 except:
     sampler.close()
     f.close()
